@@ -1,3 +1,4 @@
+%%writefile superkart_project/model_building/prep.py
 # for data manipulation
 import pandas as pd
 # for creating a folder
@@ -8,7 +9,6 @@ from sklearn.preprocessing import OneHotEncoder, StandardScaler
 # for hugging face space authentication to upload files
 from huggingface_hub import login, HfApi
 
-login(token=os.getenv("HF_TOKEN"))
 # Define constants for the dataset and output paths
 api = HfApi(token=os.getenv("HF_TOKEN"))
 DATASET_PATH = "hf://datasets/vijayendras/superkart-sales-data/superkart.csv"
