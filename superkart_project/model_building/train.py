@@ -6,7 +6,7 @@ from sklearn.pipeline import make_pipeline
 # for model training, tuning, and evaluation
 import xgboost as xgb
 from sklearn.model_selection import GridSearchCV
-from sklearn.metrics import accuracy_score, classification_report, recall_score
+from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
 # for model serialization
 import joblib
 # for creating a folder
@@ -50,10 +50,6 @@ categorical_features = [
 ]
 
 
-# Set the clas weight to handle class imbalance
-class_weight = ytrain.value_counts()[0] / ytrain.value_counts()[1]
-class_weight
-
 # Define the preprocessing steps
 preprocessor = make_column_transformer(
     (StandardScaler(), numeric_features),
@@ -61,16 +57,16 @@ preprocessor = make_column_transformer(
 )
 
 # Define base XGBoost model
-xgb_model = xgb.XGBClassifier(scale_pos_weight=class_weight, random_state=42)
+xgb_model = xgb.XGBRegressor( random_state=42)
 
 # Define hyperparameter grid
 param_grid = {
-    'xgbclassifier__n_estimators': [50, 75],
-    'xgbclassifier__max_depth': [2, 3],
-    'xgbclassifier__colsample_bytree': [0.6],
-    'xgbclassifier__colsample_bylevel': [0.6],
-    'xgbclassifier__learning_rate': [0.05, 0.1],
-    'xgbclassifier__reg_lambda': [0.5],
+    'xgbregressor__n_estimators': [50, 75],
+    'xgbregressor__max_depth': [2, 3],
+    'xgbregressor__colsample_bytree': [0.6],
+    'xgbregressor__colsample_bylevel': [0.6],
+    'xgbregressor__learning_rate': [0.05, 0.1],
+    'xgbregressor__reg_lambda': [0.5],
 }
 
 
@@ -80,7 +76,7 @@ model_pipeline = make_pipeline(preprocessor, xgb_model)
 # Start MLflow run
 with mlflow.start_run():
     # Hyperparameter tuning
-    grid_search = GridSearchCV(model_pipeline, param_grid, cv=5, n_jobs=-1)
+    grid_search = GridSearchCV(model_pipeline, param_grid, cv=5, n_jobs=-1, scoring='r2')
     grid_search.fit(Xtrain, ytrain)
 
     # Log all parameter combinations and their mean test scores
@@ -102,27 +98,27 @@ with mlflow.start_run():
     # Store and evaluate the best model
     best_model = grid_search.best_estimator_
 
-    classification_threshold = 0.45
+    # Make predictions for regression
+    y_pred_train = best_model.predict(Xtrain)
+    y_pred_test = best_model.predict(Xtest)
 
-    y_pred_train_proba = best_model.predict_proba(Xtrain)[:, 1]
-    y_pred_train = (y_pred_train_proba >= classification_threshold).astype(int)
+    train_rmse = mean_squared_error(ytrain, y_pred_train, squared=False)
+    test_rmse = mean_squared_error(ytest, y_pred_test, squared=False)
 
-    y_pred_test_proba = best_model.predict_proba(Xtest)[:, 1]
-    y_pred_test = (y_pred_test_proba >= classification_threshold).astype(int)
+    train_mae = mean_absolute_error(ytrain, y_pred_train)
+    test_mae = mean_absolute_error(ytest, y_pred_test)
 
-    train_report = classification_report(ytrain, y_pred_train, output_dict=True)
-    test_report = classification_report(ytest, y_pred_test, output_dict=True)
+    train_r2 = r2_score(ytrain, y_pred_train)
+    test_r2 = r2_score(ytest, y_pred_test)
 
     # Log the metrics for the best model
     mlflow.log_metrics({
-        "train_accuracy": train_report['accuracy'],
-        "train_precision": train_report['1']['precision'],
-        "train_recall": train_report['1']['recall'],
-        "train_f1-score": train_report['1']['f1-score'],
-        "test_accuracy": test_report['accuracy'],
-        "test_precision": test_report['1']['precision'],
-        "test_recall": test_report['1']['recall'],
-        "test_f1-score": test_report['1']['f1-score']
+        "train_rmse": train_rmse,
+        "test_rmse": test_rmse,
+        "train_mae": train_mae,
+        "test_mae": test_mae,
+        "train_r2": train_r2,
+        "test_r2": test_r2
     })
 
     # Save the model locally
