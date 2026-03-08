@@ -19,13 +19,13 @@ import mlflow
 mlflow.set_tracking_uri("http://localhost:5000")
 mlflow.set_experiment("mlops-training-experiment")
 
-api = HfApi()
+api = HfApi(token=os.getenv("HF_TOKEN"))
 
 
-Xtrain_path = "hf://datasets/vijayendras/SuperKart-Sales-Forecast/Xtrain.csv"
-Xtest_path = "hf://datasets/vijayendras/SuperKart-Sales-Forecast/Xtest.csv"
-ytrain_path = "hf://datasets/vijayendras/SuperKart-Sales-Forecast/ytrain.csv"
-ytest_path = "hf://datasets/vijayendras/SuperKart-Sales-Forecast/ytest.csv"
+Xtrain_path = "hf://datasets/vijayendras/superkart-sales-data/Xtrain.csv"
+Xtest_path = "hf://datasets/vijayendras/superkart-sales-data/Xtest.csv"
+ytrain_path = "hf://datasets/vijayendras/superkart-sales-data/ytrain.csv"
+ytest_path = "hf://datasets/vijayendras/superkart-sales-data/ytest.csv"
 
 Xtrain = pd.read_csv(Xtrain_path)
 Xtest = pd.read_csv(Xtest_path)
@@ -134,22 +134,30 @@ with mlflow.start_run():
     print(f"Model saved as artifact at: {model_path}")
 
     # Upload to Hugging Face
-    repo_id = "vijayendras/SuperKart-Sales-Forecast-model"
+    repo_id = "vijayendras/superkart-sales-model"
     repo_type = "model"
 
     # Step 1: Check if the space exists
     try:
         api.repo_info(repo_id=repo_id, repo_type=repo_type)
-        print(f"Space '{repo_id}' already exists. Using it.")
+        print(f"Model repo '{repo_id}' already exists. Using it.")
     except RepositoryNotFoundError:
-        print(f"Space '{repo_id}' not found. Creating new space...")
-        create_repo(repo_id=repo_id, repo_type=repo_type, private=False)
-        print(f"Space '{repo_id}' created.")
+        print(f"Model repo '{repo_id}' not found. Creating new model repo...")
+        create_repo(
+            repo_id=repo_id,
+            repo_type=repo_type,
+            private=False,
+            token=os.getenv("HF_TOKEN"),
+            exist_ok=True
+        )
+        print(f"model repo '{repo_id}' created.")
 
     # create_repo("churn-model", repo_type="model", private=False)
     api.upload_file(
-        path_or_fileobj="SuperKart-Sales-Forecast-model-v1.joblib",
-        path_in_repo="SuperKart-Sales-Forecast-model-v1.joblib",
+        path_or_fileobj=model_path,
+        path_in_repo=model_path,
         repo_id=repo_id,
-        repo_type=repo_type,
+        repo_type="model",
+        token=os.getenv("HF_TOKEN")
     )
+    print("Model uploaded successfully to HuggingFace.")
