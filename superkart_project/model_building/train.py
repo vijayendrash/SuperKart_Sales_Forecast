@@ -37,13 +37,13 @@ ytest = pd.read_csv(ytest_path)
 numeric_features = [
     'Product_Weight',
     'Product_Allocated_Area',
-    'Product_MRP'
+    'Product_MRP',
+    'Store_Age'
 ]
 
 categorical_features = [
     'Product_Sugar_Content',
     'Product_Type',
-    'Store_Id',
     'Store_Size',
     'Store_Location_City_Type',
     'Store_Type'
